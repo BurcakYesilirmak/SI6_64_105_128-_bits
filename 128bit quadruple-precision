@@ -1,0 +1,164 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#include <time.h>
+#include <quadmath.h>
+int FCOUNT; 
+
+void energies(__float128 r[3],__float128 v[3], __float128 *E, __float128 *H)  {
+    __float128 mu= 2.9619474286664206E-04q;
+    __float128 v2 = v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
+    __float128 r2 = r[0]*r[0] + r[1]*r[1] + r[2]*r[2];
+    __float128 norm_r=sqrtq(r2);
+    __float128 ek = 0.5*v2;         // kinetic energy 
+    __float128 epot = -mu/norm_r;    // potential energy
+          *E = ek + epot;       // mechanical energy
+
+    __float128 i = r[1] * v[2] - r[2] * v[1] ;  // i = R1*V2-R2V1 
+    __float128 j = r[2] * v[0] - r[0] * v[2] ;  // j = R2*V0-R0V2 
+    __float128 k = r[0] * v[1] - r[1] * v[0] ;  // k = R0*V1-R1V0
+          *H = sqrtq(i*i+j*j+k*k);           // angular momentum                              
+    } 
+
+void semimajor_eccentricity(__float128 r[3], __float128 v[3], __float128 *a, __float128 *e) {
+   __float128 norm_r,norm_v, r1, v1, rv;
+   __float128 x, y, z;
+   __float128 var1, var2, var3;
+   
+   __float128 GM= 2.9619474286664206E-04q;
+   r1= r[0] * r[0] + r[1] * r[1] + r[2] * r[2];
+   v1= v[0] * v[0] + v[1] * v[1] + v[2] * v[2]; 
+   rv= r[0] * v[0] + r[1] * v[1] + r[2] * v[2];
+
+   norm_r = sqrtq(r1);
+   norm_v = sqrtq(v1);
+   var1=  v1/GM - 1.0/norm_r;
+   var2= rv/GM;
+   x  = r[0]*var1 - v[0]*var2; 
+   y  = r[1]*var1 - v[1]*var2;
+   z  = r[2]*var1 - v[2]*var2;
+   var3= x*x + y*y+ z*z;
+
+   *e = sqrtq(var3);                           // eccentricity vector length
+   *a = 1/((2.0/norm_r) - v1/GM);             // semi-major axis length   
+   }    
+
+   void accelaration(__float128 r[3], __float128 *a){
+    __float128  mu = 2.9619474286664206E-04q;
+    __float128 dot = r[0]*r[0] + r[1]*r[1] + r[2]*r[2];
+    __float128 r2 = sqrtq(dot);
+    __float128 r3 = dot*r2;
+
+    for(int i=0;i<3;i++)
+    a[i] = -mu*r[i]/r3;
+    }   
+                                          
+                                                           
+   void sym6thorder(__float128 r[3], __float128 v[3], __float128 dt) {
+    __float128 v_temp1[3], r_temp1[3], v_temp2[3], r_temp2[3];
+    __float128 v_temp3[3], r_temp3[3], v_temp4[3], r_temp4[3];
+    __float128 v_temp5[3], r_temp5[3], v_temp6[3], r_temp6[3];
+    __float128 v_temp7[3], r_temp7[3],    a6[3], a7[3], a8[3];
+    __float128  r_temp[3], a1[3], a2[3],  a3[3], a4[3], a5[3];
+    __float128 b1, b2, b3, b4, d1, d2, d3, d4; 
+     b1 =  0.784513610477560q ;   
+     b2 =  0.235573213359357q;    
+     b3 = -1.177679984178870q;    
+     b4 =  1.315186320683906q;    
+     d1 =  0.3922568052387800q;   
+     d2 =  0.5100434119184585q;   
+     d3 = -0.4710533854097565q;   
+     d4 =  0.0687531682525180q;   
+    
+    int i;
+    for(i=0; i<3; i++)                            {   
+    r_temp[i] = r[i] + dt*d1*v[i];                }
+
+    accelaration(r_temp, a1);            
+    for(i=0; i<3; i++)                            {                  
+    v_temp1[i] = v[i] + dt*b1*a1[i];               
+    r_temp1[i] = r_temp[i] + dt*d2*v_temp1[i];    }
+
+    accelaration(r_temp1, a2);         
+    for(i=0; i<3; i++)                            {         
+    v_temp2[i] = v_temp1[i] + dt*b2*a2[i];        
+    r_temp2[i] = r_temp1[i] + dt*d3*v_temp2[i];   }
+    
+    accelaration(r_temp2, a3);  
+    for(i=0; i<3; i++)                            {                  
+    v_temp3[i] = v_temp2[i] + dt*b3*a3[i];
+    r_temp3[i] = r_temp2[i] + dt*d4*v_temp3[i];   }       
+
+    accelaration(r_temp3, a4);  
+    for(i=0; i<3; i++)                            {                  
+    v_temp4[i] = v_temp3[i] + dt*b4*a4[i];
+    r_temp4[i] = r_temp3[i] + dt*d4*v_temp4[i];   }      
+
+    accelaration(r_temp4, a5);  
+    for(i=0; i<3; i++)                            {                  
+    v_temp5[i] = v_temp4[i] + dt*b3*a5[i];
+    r_temp5[i] = r_temp4[i] + dt*d3*v_temp5[i];   }       
+
+    accelaration(r_temp5, a6);  
+    for(i=0; i<3; i++)                            {                  
+    v_temp6[i] = v_temp5[i] + dt*b2*a6[i];
+    r_temp6[i] = r_temp5[i] + dt*d2*v_temp6[i];   }     
+
+    accelaration(r_temp6, a7);  
+    for(i=0; i<3; i++)                            {                  
+    v[i] = v_temp6[i] + dt*b1*a7[i];
+    r[i] = r_temp6[i] + dt*d1*v[i];               }     }                                                         
+
+int main() {
+
+    double t, dt, T;
+    __float128 a, e, energy, angmomentum;  a, e, energy, angmomentum;     
+
+    __float128 r1 = -3.460167504309613E+00q;
+    __float128 r2 = -4.149454064629457E+00q;
+    __float128 r3 =  9.465721330038770E-02q;
+    __float128 v1 =  5.709741990408655E-03q;
+    __float128 v2 = -4.481465873394258E-03q;
+    __float128 v3 = -1.091471606521913E-04q;
+
+    __float128 r[]= {r1, r2, r3};
+    __float128 v[]= {v1, v2, v3};
+
+    
+    T=  2*M_PI*10000;                                
+    dt= 1e-2;
+  
+    double time_spent = 0.0;
+ 
+    clock_t begin = clock(); 
+
+        FILE *kk, *pp;
+    // kk=fopen("RK5_double_pos_vel.txt","w");
+     pp=fopen("sym_QUAD_a_e_energy.txt","w");
+    t=0.0 ;   
+    int Count=0.0;
+    while ( t <= T )  {          // ( t <= tmax/dt )
+       sym6thorder(r, v, dt);     
+       semimajor_eccentricity(r, v, &a, &e); 
+       energies(r, v, &energy, &angmomentum);   
+               
+                char buf1[256], buf2[256], buf3[256], buf4[256];
+                quadmath_snprintf (buf3, sizeof buf3, "%*.35Qf", 10, a);
+                quadmath_snprintf (buf4, sizeof buf4, "%*.35Qf", 10, e);
+                quadmath_snprintf (buf1, sizeof buf1, "%*.35Qf", 10, energy);
+                quadmath_snprintf (buf2, sizeof buf2, "%*.35Qf", 10, angmomentum);
+                
+       fprintf(pp,"%.3lf %s %s %s \n", t, buf3, buf1, buf2);
+       t +=dt;       
+       Count++; }
+
+    clock_t end = clock();
+    fclose(pp);
+
+    time_spent += (double)(end - begin) / CLOCKS_PER_SEC; 
+ 
+    printf("The elapsed time is %f seconds \n", time_spent);
+    return 0;  }
+    //gcc-11  -o quad_sym6_fukushima.exe quad_sym6_fukushima.c -lm -lquadmath
+
+ 
